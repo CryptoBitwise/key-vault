@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VAULT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #030508;
+      --surface: #0b1220;
+      --surface2: #0f1928;
+      --border: #162030;
+      --border-active: #0d5a8a;
+      --cyan: #00d4ff;
+      --cyan-dim: #0088aa;
+      --green: #00ff9d;
+      --green-dim: #00aa68;
+      --red: #ff3355;
+      --yellow: #ffd700;
+      --text: #b8cfe0;
+      --text-dim: #445566;
+      --mono: 'Share Tech Mono', monospace;
+      --sans: 'Rajdhani', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Grid BG */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 44px 44px;
+      pointer-events: none; z-index: 0;
+    }
+    /* Scanlines */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,212,255,0.012) 3px, rgba(0,212,255,0.012) 4px);
+      pointer-events: none; z-index: 9999;
+    }
+
+    #app { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 0 16px 60px; }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(3,5,8,0.92);
+      backdrop-filter: blur(10px);
+      margin-bottom: 32px;
+    }
+    .logo {
+      font-family: var(--mono);
+      font-size: 20px;
+      color: var(--cyan);
+      letter-spacing: 0.25em;
+      text-shadow: 0 0 12px var(--cyan), 0 0 24px var(--cyan-dim);
+    }
+    .status {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    /* ── PIN PAD ── */
+    #pin-screen {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 48px 0; gap: 28px;
+    }
+    .pin-title {
+      text-align: center;
+    }
+    .pin-title .eyebrow {
+      font-family: var(--mono); font-size: 9px;
+      color: var(--text-dim); letter-spacing: 0.35em; margin-bottom: 8px;
+    }
+    .pin-title h1 {
+      font-family: var(--sans); font-weight: 700; font-size: 26px;
+      letter-spacing: 0.08em; color: var(--cyan);
+      text-shadow: 0 0 12px var(--cyan);
+    }
+    .pin-dots { display: flex; gap: 12px; }
+    .pin-dot {
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      border: 2px solid var(--border-active);
+      transition: all 0.12s;
+    }
+    .pin-dot.filled {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+    .pin-error {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--red); letter-spacing: 0.08em;
+      min-height: 18px; text-align: center;
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 70px);
+      gap: 8px;
+    }
+    .key {
+      height: 54px; width: 70px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono); font-size: 20px;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .key:hover { border-color: var(--border-active); background: var(--surface2); }
+    .key:active { transform: scale(0.95); }
+    .key.del { font-size: 16px; color: var(--text-dim); }
+
+    /* ── VAULT SCREEN ── */
+    #vault-screen { display: none; }
+
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-block { flex: 1; }
+    .stat-num {
+      font-family: var(--mono); font-size: 28px;
+      color: var(--cyan); line-height: 1;
+      text-shadow: 0 0 10px var(--cyan-dim);
+    }
+    .stat-label {
+      font-family: var(--mono); font-size: 9px;
+      color: var(--text-dim); letter-spacing: 0.2em;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      font-family: var(--sans); font-weight: 600;
+      font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 9px 18px; border: 1px solid; cursor: pointer;
+      transition: all 0.15s; background: transparent;
+    }
+    .btn-cyan { border-color: var(--cyan); color: var(--cyan); }
+    .btn-cyan:hover { background: rgba(0,212,255,0.1); box-shadow: 0 0 16px rgba(0,212,255,0.25); }
+    .btn-green { border-color: var(--green); color: var(--green); }
+    .btn-green:hover { background: rgba(0,255,157,0.1); box-shadow: 0 0 16px rgba(0,255,157,0.2); }
+    .btn-red { border-color: var(--red); color: var(--red); }
+    .btn-red:hover { background: rgba(255,51,85,0.1); }
+    .btn-ghost { border-color: var(--border); color: var(--text-dim); }
+    .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── SEARCH + FILTER ── */
+    .toolbar { display: flex; gap: 8px; margin-bottom: 20px; }
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono); font-size: 12px;
+      padding: 9px 14px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--border-active); }
+    .search-input::placeholder { color: var(--text-dim); }
+    .filter-btns { display: flex; gap: 6px; }
+
+    /* ── FORM ── */
+    #entry-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .form-title {
+      font-family: var(--mono); font-size: 10px;
+      color: var(--text-dim); letter-spacing: 0.2em;
+      margin-bottom: 20px;
+    }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-family: var(--mono); font-size: 10px;
+      color: var(--text-dim); letter-spacing: 0.15em;
+      margin-bottom: 5px;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono); font-size: 12px;
+      padding: 9px 12px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--border-active);
+    }
+    .field input::placeholder, .field textarea::placeholder { color: var(--text-dim); }
+    .field select option { background: var(--surface); }
+    .field textarea { resize: vertical; min-height: 60px; }
+    .type-toggle { display: flex; gap: 8px; }
+    .type-btn {
+      flex: 1; padding: 8px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: var(--sans); font-weight: 600; font-size: 12px;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .type-btn.active-api { border-color: var(--green); color: var(--green); background: rgba(0,255,157,0.07); }
+    .type-btn.active-pass { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.07); }
+    .form-actions { display: flex; gap: 8px; margin-top: 18px; }
+
+    /* ── ENTRIES ── */
+    #entries-list { display: flex; flex-direction: column; gap: 8px; }
+    .entry {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 2px solid transparent;
+      padding: 14px 16px;
+      transition: all 0.15s;
+    }
+    .entry:hover { border-color: var(--border-active); border-left-color: var(--cyan); background: var(--surface2); }
+    .entry.type-api { border-left-color: var(--green); }
+    .entry-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .entry-info { flex: 1; min-width: 0; }
+    .entry-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .tag {
+      font-family: var(--mono); font-size: 9px;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 2px 7px; border: 1px solid; flex-shrink: 0;
+    }
+    .tag-api { border-color: var(--green-dim); color: var(--green); }
+    .tag-pass { border-color: var(--cyan-dim); color: var(--cyan); }
+    .entry-label {
+      font-family: var(--sans); font-weight: 600; font-size: 15px;
+      color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .entry-sub {
+      font-family: var(--mono); font-size: 10px;
+      color: var(--text-dim); margin-bottom: 8px;
+    }
+    .entry-value {
+      font-family: var(--mono); font-size: 12px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+      color: var(--text-dim);
+      word-break: break-all;
+      max-height: 72px; overflow: auto;
+      transition: color 0.2s;
+    }
+    .entry-value.revealed-api { color: var(--green); }
+    .entry-value.revealed-pass { color: var(--cyan); }
+    .entry-notes { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 6px; font-style: italic; }
+    .entry-actions { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+    .act-btn {
+      font-family: var(--sans); font-weight: 600;
+      font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 5px 10px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-dim);
+      cursor: pointer; transition: all 0.12s; white-space: nowrap;
+    }
+    .act-btn:hover { border-color: var(--text-dim); color: var(--text); }
+    .act-btn.reveal:hover { border-color: var(--cyan); color: var(--cyan); }
+    .act-btn.copy-btn:hover { border-color: var(--green); color: var(--green); }
+    .act-btn.del-btn:hover { border-color: var(--red); color: var(--red); }
+
+    .empty {
+      text-align: center; padding: 60px 0;
+      font-family: var(--mono); font-size: 12px;
+      color: var(--text-dim); letter-spacing: 0.1em;
+    }
+    .toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border-active);
+      color: var(--cyan);
+      font-family: var(--mono); font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 8px 16px;
+      z-index: 1000;
+      opacity: 0; transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.25s ease forwards; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">◈ VAULT</div>
+    <div class="status" id="status-bar">
+      <div class="dot dot-red" id="status-dot"></div>
+      <span id="status-text" style="color:var(--text-dim)">LOCKED</span>
+      <button class="btn btn-ghost" id="lock-btn" style="display:none;font-size:10px;padding:4px 10px" onclick="lockVault()">LOCK</button>
+    </div>
+  </header>
+
+  <!-- PIN SCREEN -->
+  <div id="pin-screen">
+    <div class="pin-title">
+      <div class="eyebrow">◈ ACCESS CONTROL</div>
+      <h1 id="pin-heading">ENTER PIN</h1>
+    </div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="keypad">
+      <button class="key" onclick="pinKey('1')">1</button>
+      <button class="key" onclick="pinKey('2')">2</button>
+      <button class="key" onclick="pinKey('3')">3</button>
+      <button class="key" onclick="pinKey('4')">4</button>
+      <button class="key" onclick="pinKey('5')">5</button>
+      <button class="key" onclick="pinKey('6')">6</button>
+      <button class="key" onclick="pinKey('7')">7</button>
+      <button class="key" onclick="pinKey('8')">8</button>
+      <button class="key" onclick="pinKey('9')">9</button>
+      <div></div>
+      <button class="key" onclick="pinKey('0')">0</button>
+      <button class="key del" onclick="pinDel()">⌫</button>
+    </div>
+  </div>
+
+  <!-- VAULT SCREEN -->
+  <div id="vault-screen">
+    <div class="topbar">
+      <div class="stat-block">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">TOTAL</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="stat-api" style="color:var(--green);text-shadow:0 0 10px var(--green-dim)">0</div>
+        <div class="stat-label">API KEYS</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="stat-pass">0</div>
+        <div class="stat-label">PASSWORDS</div>
+      </div>
+      <button class="btn btn-cyan" onclick="openForm()">+ NEW</button>
+    </div>
+
+    <!-- Form -->
+    <div id="entry-form">
+      <div class="form-title" id="form-title">◈ NEW ENTRY</div>
+      <div class="field">
+        <label>TYPE</label>
+        <div class="type-toggle">
+          <button class="type-btn active-api" id="type-api" onclick="setType('api_key')">API KEY</button>
+          <button class="type-btn" id="type-pass" onclick="setType('password')">PASSWORD</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>LABEL *</label>
+        <input type="text" id="f-label" placeholder="e.g. OpenAI Production" />
+      </div>
+      <div class="field" id="f-service-wrap">
+        <label>SERVICE</label>
+        <input type="text" id="f-service" placeholder="e.g. openai.com" />
+      </div>
+      <div class="field" id="f-username-wrap" style="display:none">
+        <label>USERNAME / EMAIL</label>
+        <input type="text" id="f-username" placeholder="e.g. john@example.com" />
+      </div>
+      <div class="field">
+        <label id="f-value-label">API KEY *</label>
+        <input type="password" id="f-value" placeholder="Enter secret value" />
+      </div>
+      <div class="field">
+        <label>NOTES</label>
+        <textarea id="f-notes" placeholder="Optional notes..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeForm()" style="flex:1">CANCEL</button>
+        <button class="btn btn-cyan" id="save-btn" onclick="saveEntry()" style="flex:2">SAVE ENTRY</button>
+      </div>
+    </div>
+
+    <!-- Search + filter -->
+    <div class="toolbar" id="toolbar" style="display:none">
+      <input class="search-input" id="search" placeholder="Search..." oninput="renderEntries()" />
+      <div class="filter-btns">
+        <button class="btn btn-cyan" id="f-all" onclick="setFilter('all')" style="font-size:10px;padding:7px 12px">ALL</button>
+        <button class="btn btn-ghost" id="f-api" onclick="setFilter('api_key')" style="font-size:10px;padding:7px 12px">API</button>
+        <button class="btn btn-ghost" id="f-pw" onclick="setFilter('password')" style="font-size:10px;padding:7px 12px">PASS</button>
+      </div>
+    </div>
+
+    <div id="entries-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────────────────────────
+let PIN = '';
+let entries = [];
+let storedPinHash = null;
+let editingId = null;
+let currentType = 'api_key';
+let filterType = 'all';
+let pinBuffer = '';
+let pinMode = 'unlock'; // 'setup' | 'confirm' | 'unlock'
+let setupPinTemp = '';
+const PIN_LEN = 6;
+
+// ── CRYPTO ───────────────────────────────────────────────────────────────────
+async function deriveKey(pin, salt) {
+  const raw = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    raw, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptData(plain, pin) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await deriveKey(pin, salt);
+  const enc  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plain));
+  const buf  = new Uint8Array(16 + 12 + enc.byteLength);
+  buf.set(salt, 0); buf.set(iv, 16); buf.set(new Uint8Array(enc), 28);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function decryptData(b64, pin) {
+  const buf  = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const key  = await deriveKey(pin, buf.slice(0, 16));
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(16, 28) }, key, buf.slice(28));
+  return new TextDecoder().decode(plain);
+}
+
+async function hashPin(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('VAULT:' + pin));
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+
+// ── API ──────────────────────────────────────────────────────────────────────
+async function api(method, body) {
+  const res = await fetch('/api/vault', {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const data = await api('GET');
+    if (data.pinHash) {
+      storedPinHash = data.pinHash;
+      // store encrypted blob in memory for after unlock
+      window._encryptedBlob = data.data;
+      pinMode = 'unlock';
+      setPinHeading('ENTER PIN');
+    } else {
+      pinMode = 'setup';
+      setPinHeading('SET MASTER PIN');
+    }
+  } catch(e) {
+    pinMode = 'setup';
+    setPinHeading('SET MASTER PIN');
+  }
+}
+
+// ── PIN PAD ──────────────────────────────────────────────────────────────────
+function setPinHeading(txt) {
+  document.getElementById('pin-heading').textContent = txt;
+}
+
+function updateDots() {
+  document.querySelectorAll('.pin-dot').forEach((d, i) => {
+    d.classList.toggle('filled', i < pinBuffer.length);
+  });
+}
+
+function pinKey(k) {
+  if (pinBuffer.length >= PIN_LEN) return;
+  pinBuffer += k;
+  updateDots();
+  document.getElementById('pin-error').textContent = '';
+  if (pinBuffer.length === PIN_LEN) {
+    setTimeout(() => handlePinSubmit(pinBuffer), 120);
+    pinBuffer = '';
+    updateDots();
+  }
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updateDots();
+}
+
+async function handlePinSubmit(pin) {
+  if (pinMode === 'setup') {
+    setupPinTemp = pin;
+    pinMode = 'confirm';
+    setPinHeading('CONFIRM PIN');
+    return;
+  }
+  if (pinMode === 'confirm') {
+    if (pin !== setupPinTemp) {
+      document.getElementById('pin-error').textContent = '✗ PINs do not match';
+      pinMode = 'setup';
+      setupPinTemp = '';
+      setPinHeading('SET MASTER PIN');
+      return;
+    }
+    // Initialize vault
+    const h = await hashPin(pin);
+    await api('POST', { action: 'init', pinHash: h });
+    storedPinHash = h;
+    PIN = pin;
+    entries = [];
+    enterVault();
+    return;
+  }
+  if (pinMode === 'unlock') {
+    const h = await hashPin(pin);
+    if (h !== storedPinHash) {
+      document.getElementById('pin-error').textContent = '✗ Incorrect PIN';
+      return;
+    }
+    PIN = pin;
+    // Decrypt entries blob
+    try {
+      if (window._encryptedBlob) {
+        const json = await decryptData(window._encryptedBlob, PIN);
+        entries = JSON.parse(json);
+      } else {
+        entries = [];
+      }
+    } catch(e) {
+      entries = [];
+    }
+    enterVault();
+  }
+}
+
+function enterVault() {
+  document.getElementById('pin-screen').style.display = 'none';
+  document.getElementById('vault-screen').style.display = 'block';
+  document.getElementById('vault-screen').className = 'fade-in';
+  document.getElementById('status-dot').className = 'dot dot-green';
+  document.getElementById('status-text').textContent = 'UNLOCKED';
+  document.getElementById('status-text').style.color = 'var(--green)';
+  document.getElementById('lock-btn').style.display = '';
+  renderEntries();
+}
+
+function lockVault() {
+  PIN = '';
+  entries = [];
+  editingId = null;
+  closeForm();
+  document.getElementById('vault-screen').style.display = 'none';
+  document.getElementById('pin-screen').style.display = 'flex';
+  document.getElementById('status-dot').className = 'dot dot-red';
+  document.getElementById('status-text').textContent = 'LOCKED';
+  document.getElementById('status-text').style.color = 'var(--text-dim)';
+  document.getElementById('lock-btn').style.display = 'none';
+  pinMode = 'unlock';
+  setPinHeading('ENTER PIN');
+}
+
+// ── SAVE TO KV ───────────────────────────────────────────────────────────────
+async function persist() {
+  const json = JSON.stringify(entries);
+  const blob = await encryptData(json, PIN);
+  await api('POST', { action: 'save', data: blob });
+}
+
+// ── FORM ─────────────────────────────────────────────────────────────────────
+function openForm(id) {
+  editingId = id || null;
+  const form = document.getElementById('entry-form');
+  form.style.display = 'block';
+  document.getElementById('toolbar').style.display = entries.length > 0 ? 'flex' : 'none';
+
+  if (id) {
+    const e = entries.find(x => x.id === id);
+    document.getElementById('form-title').textContent = '◈ EDIT ENTRY';
+    setType(e.type);
+    document.getElementById('f-label').value = e.label || '';
+    document.getElementById('f-service').value = e.service || '';
+    document.getElementById('f-username').value = e.username || '';
+    document.getElementById('f-value').placeholder = 'Leave blank to keep current value';
+    document.getElementById('f-value').value = '';
+    document.getElementById('f-notes').value = e.notes || '';
+  } else {
+    document.getElementById('form-title').textContent = '◈ NEW ENTRY';
+    setType('api_key');
+    document.getElementById('f-label').value = '';
+    document.getElementById('f-service').value = '';
+    document.getElementById('f-username').value = '';
+    document.getElementById('f-value').value = '';
+    document.getElementById('f-value').placeholder = 'Enter secret value';
+    document.getElementById('f-notes').value = '';
+  }
+}
+
+function closeForm() {
+  document.getElementById('entry-form').style.display = 'none';
+  editingId = null;
+}
+
+function setType(t) {
+  currentType = t;
+  document.getElementById('type-api').className = 'type-btn' + (t === 'api_key' ? ' active-api' : '');
+  document.getElementById('type-pass').className = 'type-btn' + (t === 'password' ? ' active-pass' : '');
+  document.getElementById('f-service-wrap').style.display = t === 'api_key' ? '' : 'none';
+  document.getElementById('f-username-wrap').style.display = t === 'password' ? '' : 'none';
+  document.getElementById('f-value-label').textContent = t === 'api_key' ? 'API KEY *' : 'PASSWORD *';
+}
+
+async function saveEntry() {
+  const label = document.getElementById('f-label').value.trim();
+  const value = document.getElementById('f-value').value.trim();
+  if (!label) { showToast('Label is required'); return; }
+  if (!value && !editingId) { showToast('Secret value is required'); return; }
+
+  document.getElementById('save-btn').textContent = 'ENCRYPTING...';
+  document.getElementById('save-btn').disabled = true;
+
+  try {
+    let encryptedValue;
+    if (value) {
+      encryptedValue = await encryptData(value, PIN);
+    } else {
+      encryptedValue = entries.find(e => e.id === editingId).encryptedValue;
+    }
+
+    const entry = {
+      id: editingId || crypto.randomUUID(),
+      type: currentType,
+      label,
+      service: document.getElementById('f-service').value.trim() || undefined,
+      username: document.getElementById('f-username').value.trim() || undefined,
+      notes: document.getElementById('f-notes').value.trim() || undefined,
+      encryptedValue,
+      createdAt: editingId ? entries.find(e => e.id === editingId).createdAt : Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    if (editingId) {
+      entries = entries.map(e => e.id === editingId ? entry : e);
+    } else {
+      entries.push(entry);
+    }
+
+    await persist();
+    closeForm();
+    renderEntries();
+    showToast(editingId ? 'ENTRY UPDATED' : 'ENTRY SAVED');
+  } finally {
+    document.getElementById('save-btn').textContent = 'SAVE ENTRY';
+    document.getElementById('save-btn').disabled = false;
+  }
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this entry? Cannot be undone.')) return;
+  entries = entries.filter(e => e.id !== id);
+  await persist();
+  renderEntries();
+  showToast('ENTRY DELETED');
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function setFilter(f) {
+  filterType = f;
+  ['all','api','pw'].forEach(k => {
+    const btn = document.getElementById('f-'+k);
+    const type = k === 'api' ? 'api_key' : k === 'pw' ? 'password' : 'all';
+    btn.className = 'btn ' + (type === f ? 'btn-cyan' : 'btn-ghost');
+    btn.style.fontSize = '10px';
+    btn.style.padding = '7px 12px';
+  });
+  renderEntries();
+}
+
+function renderEntries() {
+  const q = (document.getElementById('search')?.value || '').toLowerCase();
+  const list = document.getElementById('entries-list');
+  const toolbar = document.getElementById('toolbar');
+
+  const filtered = entries.filter(e => {
+    if (filterType !== 'all' && e.type !== filterType) return false;
+    if (!q) return true;
+    return (e.label||'').toLowerCase().includes(q) ||
+           (e.service||'').toLowerCase().includes(q) ||
+           (e.username||'').toLowerCase().includes(q);
+  });
+
+  // update stats
+  document.getElementById('stat-total').textContent = entries.length;
+  document.getElementById('stat-api').textContent = entries.filter(e=>e.type==='api_key').length;
+  document.getElementById('stat-pass').textContent = entries.filter(e=>e.type==='password').length;
+
+  toolbar.style.display = entries.length > 0 ? 'flex' : 'none';
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty">${entries.length === 0 ? 'VAULT EMPTY — ADD YOUR FIRST ENTRY' : 'NO RESULTS'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => `
+    <div class="entry fade-in ${e.type === 'api_key' ? 'type-api' : ''}" id="entry-${e.id}">
+      <div class="entry-top">
+        <div class="entry-info">
+          <div class="entry-header">
+            <span class="tag ${e.type === 'api_key' ? 'tag-api' : 'tag-pass'}">${e.type === 'api_key' ? 'API KEY' : 'PASSWORD'}</span>
+            <span class="entry-label">${esc(e.label)}</span>
+          </div>
+          ${e.service ? `<div class="entry-sub">${esc(e.service)}</div>` : ''}
+          ${e.username ? `<div class="entry-sub">${esc(e.username)}</div>` : ''}
+          <div class="entry-value" id="val-${e.id}">• • • • • • • • • • • • • •</div>
+          ${e.notes ? `<div class="entry-notes">${esc(e.notes)}</div>` : ''}
+        </div>
+        <div class="entry-actions">
+          <button class="act-btn reveal" onclick="toggleReveal('${e.id}','${e.type}')" id="rev-${e.id}">REVEAL</button>
+          <button class="act-btn copy-btn" onclick="copyEntry('${e.id}')">COPY</button>
+          <button class="act-btn" onclick="openForm('${e.id}')">EDIT</button>
+          <button class="act-btn del-btn" onclick="deleteEntry('${e.id}')">DEL</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+const revealedMap = {};
+
+async function toggleReveal(id, type) {
+  const valEl = document.getElementById('val-' + id);
+  const btnEl = document.getElementById('rev-' + id);
+  if (revealedMap[id]) {
+    revealedMap[id] = false;
+    valEl.textContent = '• • • • • • • • • • • • • •';
+    valEl.className = 'entry-value';
+    btnEl.textContent = 'REVEAL';
+  } else {
+    try {
+      const entry = entries.find(e => e.id === id);
+      const plain = await decryptData(entry.encryptedValue, PIN);
+      revealedMap[id] = true;
+      valEl.textContent = plain;
+      valEl.className = 'entry-value ' + (type === 'api_key' ? 'revealed-api' : 'revealed-pass');
+      btnEl.textContent = 'HIDE';
+    } catch {
+      valEl.textContent = 'DECRYPTION FAILED';
+    }
+  }
+}
+
+async function copyEntry(id) {
+  try {
+    const entry = entries.find(e => e.id === id);
+    const plain = await decryptData(entry.encryptedValue, PIN);
+    await navigator.clipboard.writeText(plain);
+    showToast('✓ COPIED TO CLIPBOARD');
+  } catch {
+    showToast('COPY FAILED');
+  }
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── START ────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
