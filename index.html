@@ -172,6 +172,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
       <div class="stat"><div class="stat-n g" id="sa">0</div><div class="stat-l">API KEYS</div></div>
       <div class="stat"><div class="stat-n" id="sp">0</div><div class="stat-l">PASSWORDS</div></div>
       <button class="btn bc" onclick="openForm()">+ NEW</button>
+      <button class="btn bx" onclick="document.getElementById('imp').click()">IMPORT</button>
+      <input type="file" id="imp" accept=".json" style="display:none" onchange="importBackup(this)" />
     </div>
 
     <div id="form">
@@ -340,6 +342,25 @@ async function persist(){
   a.download='vault-backup-'+Date.now()+'.json';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+async function importBackup(input){
+  const file=input.files[0];
+  if(!file)return;
+  try{
+    const text=await file.text();
+    const {pin,data}=JSON.parse(text);
+    if(!pin||!data){return toast('INVALID BACKUP FILE');}
+    // verify current PIN can decrypt it
+    const json=await dec(data,PIN);
+    entries=JSON.parse(json);
+    await persist();
+    render();
+    toast('✓ BACKUP RESTORED');
+  }catch{
+    toast('RESTORE FAILED — WRONG PIN OR BAD FILE');
+  }
+  input.value='';
 }
 
 // ── FORM
