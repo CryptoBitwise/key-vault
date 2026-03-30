@@ -482,6 +482,7 @@ async function api(method, body) {
 async function init() {
   try {
     const data = await api('GET');
+    console.log('init response:', data);
     if (data.pinHash) {
       storedPinHash = data.pinHash;
       // store encrypted blob in memory for after unlock
@@ -527,6 +528,7 @@ function pinDel() {
 }
 
 async function handlePinSubmit(pin) {
+  console.log('pinMode:', pinMode, 'storedPinHash:', storedPinHash);
   if (pinMode === 'setup') {
     setupPinTemp = pin;
     pinMode = 'confirm';
