@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VAULT</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #040608;
+  --surface: #0b1320;
+  --surface2: #0f1a2a;
+  --border: #172030;
+  --border-hi: #0d5a8a;
+  --cyan: #00d4ff;
+  --cyan2: #008aaa;
+  --green: #00ff9d;
+  --green2: #00aa68;
+  --red: #ff3355;
+  --text: #b8d0e8;
+  --dim: #3a5570;
+  --mono: 'Share Tech Mono', monospace;
+  --sans: 'Rajdhani', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+#app{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:0 16px 60px;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:32px;position:sticky;top:0;background:rgba(4,6,8,0.95);backdrop-filter:blur(8px);z-index:100;}
+.logo{font-family:var(--mono);font-size:18px;color:var(--cyan);letter-spacing:0.25em;text-shadow:0 0 12px var(--cyan);}
+.status{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;display:flex;align-items:center;gap:8px;}
+.dot{width:6px;height:6px;border-radius:50%;}
+.dot-g{background:var(--green);box-shadow:0 0 6px var(--green);}
+.dot-r{background:var(--red);box-shadow:0 0 6px var(--red);}
+
+/* PIN */
+#pin-screen{display:flex;flex-direction:column;align-items:center;gap:24px;padding:48px 0;}
+.pin-label{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:0.25em;}
+.pin-heading{font-family:var(--sans);font-weight:700;font-size:24px;color:var(--cyan);letter-spacing:0.08em;text-shadow:0 0 10px var(--cyan);}
+.pin-dots{display:flex;gap:14px;}
+.pd{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-hi);transition:all 0.12s;}
+.pd.on{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+.pin-err{font-family:var(--mono);font-size:11px;color:var(--red);min-height:16px;letter-spacing:0.05em;}
+.keypad{display:grid;grid-template-columns:repeat(3,68px);gap:8px;}
+.key{height:52px;width:68px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:20px;cursor:pointer;transition:all 0.1s;display:flex;align-items:center;justify-content:center;}
+.key:hover{border-color:var(--border-hi);background:var(--surface2);}
+.key:active{transform:scale(0.94);}
+
+/* VAULT */
+#vault-screen{display:none;}
+.topbar{display:flex;align-items:center;gap:16px;margin-bottom:24px;}
+.stat{flex:1;}
+.stat-n{font-family:var(--mono);font-size:26px;color:var(--cyan);text-shadow:0 0 8px var(--cyan2);}
+.stat-n.g{color:var(--green);text-shadow:0 0 8px var(--green2);}
+.stat-l{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:0.2em;}
+
+/* BUTTONS */
+.btn{font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;padding:8px 16px;border:1px solid;cursor:pointer;background:transparent;transition:all 0.12s;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;}
+.bc{border-color:var(--cyan);color:var(--cyan);}
+.bc:hover{background:rgba(0,212,255,0.1);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+.bg_{border-color:var(--green);color:var(--green);}
+.bg_:hover{background:rgba(0,255,157,0.08);}
+.br{border-color:var(--red);color:var(--red);}
+.br:hover{background:rgba(255,51,85,0.08);}
+.bx{border-color:var(--border);color:var(--dim);}
+.bx:hover{border-color:var(--dim);color:var(--text);}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:8px;margin-bottom:16px;}
+.sinput{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;outline:none;transition:border-color 0.15s;}
+.sinput:focus{border-color:var(--border-hi);}
+.sinput::placeholder{color:var(--dim);}
+.fbtn{font-family:var(--sans);font-weight:600;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;padding:7px 12px;border:1px solid;cursor:pointer;background:transparent;transition:all 0.12s;}
+
+/* FORM */
+#form{background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:16px;display:none;}
+.ftitle{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.2em;margin-bottom:18px;}
+.frow{margin-bottom:12px;}
+.frow label{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.12em;margin-bottom:5px;}
+.frow input,.frow textarea,.frow select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 11px;outline:none;transition:border-color 0.15s;}
+.frow input:focus,.frow textarea:focus,.frow select:focus{border-color:var(--border-hi);}
+.frow input::placeholder,.frow textarea::placeholder{color:var(--dim);}
+.frow select option{background:var(--surface);}
+.frow textarea{resize:vertical;min-height:56px;}
+.type-row{display:flex;gap:8px;}
+.tbtn{flex:1;padding:8px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all 0.12s;}
+.tbtn.ta{border-color:var(--green);color:var(--green);background:rgba(0,255,157,0.06);}
+.tbtn.tp{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,0.06);}
+.fbtns{display:flex;gap:8px;margin-top:16px;}
+
+/* ENTRIES */
+#list{display:flex;flex-direction:column;gap:8px;}
+.entry{background:var(--surface);border:1px solid var(--border);border-left:2px solid transparent;padding:13px 15px;transition:all 0.12s;}
+.entry:hover{border-color:var(--border-hi);background:var(--surface2);}
+.entry.ea{border-left-color:var(--green);}
+.entry.ep{border-left-color:var(--cyan);}
+.etop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.einfo{flex:1;min-width:0;}
+.ehead{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;padding:2px 6px;border:1px solid;flex-shrink:0;}
+.tag-a{border-color:var(--green2);color:var(--green);}
+.tag-p{border-color:var(--cyan2);color:var(--cyan);}
+.elabel{font-family:var(--sans);font-weight:700;font-size:15px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.esub{font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:6px;}
+.eval{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,0.35);border:1px solid var(--border);padding:6px 10px;color:var(--dim);word-break:break-all;max-height:68px;overflow:auto;transition:color 0.15s;}
+.eval.ra{color:var(--green);}
+.eval.rp{color:var(--cyan);}
+.enotes{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:5px;font-style:italic;}
+.eacts{display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+.ab{font-family:var(--sans);font-weight:600;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all 0.1s;white-space:nowrap;}
+.ab:hover{border-color:var(--dim);color:var(--text);}
+.ab.acopy:hover{border-color:var(--green);color:var(--green);}
+.ab.adel:hover{border-color:var(--red);color:var(--red);}
+
+.empty{text-align:center;padding:56px 0;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:0.1em;}
+.lockbtn{font-family:var(--sans);font-weight:600;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;padding:5px 12px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all 0.12s;}
+.lockbtn:hover{border-color:var(--red);color:var(--red);}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border-hi);color:var(--cyan);font-family:var(--mono);font-size:10px;letter-spacing:0.1em;padding:8px 16px;z-index:1000;opacity:0;transition:opacity 0.2s;pointer-events:none;}
+.toast.on{opacity:1;}
+
+@keyframes fi{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.fi{animation:fi 0.2s ease forwards;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">◈ VAULT</div>
+    <div class="status">
+      <div class="dot dot-r" id="sdot"></div>
+      <span id="stxt" style="color:var(--dim)">LOCKED</span>
+      <button class="lockbtn" id="lbtn" style="display:none" onclick="lock()">LOCK</button>
+    </div>
+  </header>
+
+  <!-- PIN SCREEN -->
+  <div id="pin-screen">
+    <div class="pin-label">◈ ACCESS CONTROL</div>
+    <div class="pin-heading" id="phead">ENTER PIN</div>
+    <div class="pin-dots">
+      <div class="pd" id="d0"></div>
+      <div class="pd" id="d1"></div>
+      <div class="pd" id="d2"></div>
+      <div class="pd" id="d3"></div>
+    </div>
+    <div class="pin-err" id="perr"></div>
+    <div class="keypad">
+      <button class="key" onclick="pk('1')">1</button>
+      <button class="key" onclick="pk('2')">2</button>
+      <button class="key" onclick="pk('3')">3</button>
+      <button class="key" onclick="pk('4')">4</button>
+      <button class="key" onclick="pk('5')">5</button>
+      <button class="key" onclick="pk('6')">6</button>
+      <button class="key" onclick="pk('7')">7</button>
+      <button class="key" onclick="pk('8')">8</button>
+      <button class="key" onclick="pk('9')">9</button>
+      <div></div>
+      <button class="key" onclick="pk('0')">0</button>
+      <button class="key" style="font-size:16px;color:var(--dim)" onclick="pd()">⌫</button>
+    </div>
+  </div>
+
+  <!-- VAULT SCREEN -->
+  <div id="vault-screen">
+    <div class="topbar">
+      <div class="stat"><div class="stat-n" id="st">0</div><div class="stat-l">TOTAL</div></div>
+      <div class="stat"><div class="stat-n g" id="sa">0</div><div class="stat-l">API KEYS</div></div>
+      <div class="stat"><div class="stat-n" id="sp">0</div><div class="stat-l">PASSWORDS</div></div>
+      <button class="btn bc" onclick="openForm()">+ NEW</button>
+    </div>
+
+    <div id="form">
+      <div class="ftitle" id="ftitle">◈ NEW ENTRY</div>
+      <div class="frow">
+        <label>TYPE</label>
+        <div class="type-row">
+          <button class="tbtn ta" id="tapi" onclick="setType('api')">API KEY</button>
+          <button class="tbtn" id="tpw" onclick="setType('pw')">PASSWORD</button>
+        </div>
+      </div>
+      <div class="frow">
+        <label>LABEL *</label>
+        <input id="fl" placeholder="e.g. OpenAI Production" />
+      </div>
+      <div class="frow" id="fsw">
+        <label>SERVICE</label>
+        <input id="fs" placeholder="e.g. openai.com" />
+      </div>
+      <div class="frow" id="fuw" style="display:none">
+        <label>USERNAME / EMAIL</label>
+        <input id="fu" placeholder="e.g. john@example.com" />
+      </div>
+      <div class="frow">
+        <label id="fvl">API KEY *</label>
+        <input type="password" id="fv" placeholder="Enter secret value" />
+      </div>
+      <div class="frow">
+        <label>NOTES</label>
+        <textarea id="fn" placeholder="Optional..."></textarea>
+      </div>
+      <div class="fbtns">
+        <button class="btn bx" onclick="closeForm()" style="flex:1">CANCEL</button>
+        <button class="btn bc" id="sbtn" onclick="saveEntry()" style="flex:2">SAVE</button>
+      </div>
+    </div>
+
+    <div class="toolbar" id="tb" style="display:none">
+      <input class="sinput" id="sq" placeholder="Search..." oninput="render()" />
+      <button class="fbtn bc" id="fall" onclick="sf('all')" style="border-color:var(--cyan);color:var(--cyan)">ALL</button>
+      <button class="fbtn bx" id="fapi" onclick="sf('api')" style="border-color:var(--border);color:var(--dim)">API</button>
+      <button class="fbtn bx" id="fpw" onclick="sf('pw')" style="border-color:var(--border);color:var(--dim)">PASS</button>
+    </div>
+
+    <div id="list"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE
+let PIN='', entries=[], storedPin=null, editId=null, curType='api', filt='all', buf='';
+const PIN_LEN = 4;
+
+// ── CRYPTO
+async function dk(pin,salt){
+  const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function enc(plain,pin){
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await dk(pin,salt);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(plain));
+  const b=new Uint8Array(16+12+ct.byteLength);
+  b.set(salt,0);b.set(iv,16);b.set(new Uint8Array(ct),28);
+  return btoa(String.fromCharCode(...b));
+}
+async function dec(b64,pin){
+  const b=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const key=await dk(pin,b.slice(0,16));
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b.slice(16,28)},key,b.slice(28));
+  return new TextDecoder().decode(pt);
+}
+async function hashPin(pin){
+  const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('VLT:'+pin));
+  return btoa(String.fromCharCode(...new Uint8Array(h)));
+}
+
+// ── API
+async function api(method,body){
+  const r=await fetch('/api/vault',{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  return r.json();
+}
+
+// ── INIT
+async function init(){
+  try{
+    const d=await api('GET');
+    storedPin=d.pin??null;
+    window._blob=d.data??null;
+    if(storedPin){
+      setHead('ENTER PIN');
+    } else {
+      setHead('SET 4-DIGIT PIN');
+    }
+  }catch(e){
+    setHead('SET 4-DIGIT PIN');
+  }
+}
+
+// ── PIN PAD
+function setHead(t){document.getElementById('phead').textContent=t;}
+function dots(){for(let i=0;i<PIN_LEN;i++)document.getElementById('d'+i).className='pd'+(i<buf.length?' on':'');}
+function pk(k){
+  if(buf.length>=PIN_LEN)return;
+  buf+=k;dots();
+  document.getElementById('perr').textContent='';
+  if(buf.length===PIN_LEN){const p=buf;buf='';dots();setTimeout(()=>submit(p),120);}
+}
+function pd(){buf=buf.slice(0,-1);dots();}
+
+async function submit(pin){
+  if(!storedPin){
+    // First time - save pin hash
+    const h=await hashPin(pin);
+    await api('POST',{action:'init',pin:h});
+    storedPin=h;
+    PIN=pin;
+    entries=[];
+    enterVault();
+    return;
+  }
+  // Unlock
+  const h=await hashPin(pin);
+  if(h!==storedPin){
+    document.getElementById('perr').textContent='✗ Wrong PIN';
+    return;
+  }
+  PIN=pin;
+  try{
+    entries=window._blob?JSON.parse(await dec(window._blob,PIN)):[];
+  }catch{entries=[];}
+  enterVault();
+}
+
+function enterVault(){
+  document.getElementById('pin-screen').style.display='none';
+  document.getElementById('vault-screen').style.display='block';
+  document.getElementById('vault-screen').className='fi';
+  document.getElementById('sdot').className='dot dot-g';
+  document.getElementById('stxt').textContent='UNLOCKED';
+  document.getElementById('stxt').style.color='var(--green)';
+  document.getElementById('lbtn').style.display='';
+  render();
+}
+
+function lock(){
+  PIN='';entries=[];editId=null;closeForm();
+  document.getElementById('vault-screen').style.display='none';
+  document.getElementById('pin-screen').style.display='flex';
+  document.getElementById('sdot').className='dot dot-r';
+  document.getElementById('stxt').textContent='LOCKED';
+  document.getElementById('stxt').style.color='var(--dim)';
+  document.getElementById('lbtn').style.display='none';
+  setHead(storedPin?'ENTER PIN':'SET 4-DIGIT PIN');
+}
+
+// ── PERSIST + AUTO BACKUP
+async function persist(){
+  const blob=await enc(JSON.stringify(entries),PIN);
+  await api('POST',{action:'save',data:blob});
+  // Auto-download backup
+  const file=JSON.stringify({pin:storedPin,data:blob});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([file],{type:'application/json'}));
+  a.download='vault-backup-'+Date.now()+'.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── FORM
+function openForm(id){
+  editId=id||null;
+  document.getElementById('form').style.display='block';
+  document.getElementById('ftitle').textContent=id?'◈ EDIT ENTRY':'◈ NEW ENTRY';
+  if(id){
+    const e=entries.find(x=>x.id===id);
+    setType(e.type);
+    document.getElementById('fl').value=e.label||'';
+    document.getElementById('fs').value=e.service||'';
+    document.getElementById('fu').value=e.username||'';
+    document.getElementById('fv').value='';
+    document.getElementById('fv').placeholder='Leave blank to keep current';
+    document.getElementById('fn').value=e.notes||'';
+  } else {
+    setType('api');
+    document.getElementById('fl').value='';
+    document.getElementById('fs').value='';
+    document.getElementById('fu').value='';
+    document.getElementById('fv').value='';
+    document.getElementById('fv').placeholder='Enter secret value';
+    document.getElementById('fn').value='';
+  }
+}
+function closeForm(){document.getElementById('form').style.display='none';editId=null;}
+function setType(t){
+  curType=t;
+  document.getElementById('tapi').className='tbtn'+(t==='api'?' ta':'');
+  document.getElementById('tpw').className='tbtn'+(t==='pw'?' tp':'');
+  document.getElementById('fsw').style.display=t==='api'?'':'none';
+  document.getElementById('fuw').style.display=t==='pw'?'':'none';
+  document.getElementById('fvl').textContent=t==='api'?'API KEY *':'PASSWORD *';
+}
+
+async function saveEntry(){
+  const label=document.getElementById('fl').value.trim();
+  const val=document.getElementById('fv').value.trim();
+  if(!label)return toast('Label required');
+  if(!val&&!editId)return toast('Secret value required');
+  const btn=document.getElementById('sbtn');
+  btn.textContent='SAVING...';btn.disabled=true;
+  try{
+    let ev=editId?entries.find(e=>e.id===editId).encryptedValue:'';
+    if(val)ev=await enc(val,PIN);
+    const entry={
+      id:editId||crypto.randomUUID(),
+      type:curType,
+      label,
+      service:document.getElementById('fs').value.trim()||undefined,
+      username:document.getElementById('fu').value.trim()||undefined,
+      notes:document.getElementById('fn').value.trim()||undefined,
+      encryptedValue:ev,
+      createdAt:editId?entries.find(e=>e.id===editId).createdAt:Date.now(),
+      updatedAt:Date.now(),
+    };
+    entries=editId?entries.map(e=>e.id===editId?entry:e):[...entries,entry];
+    await persist();
+    closeForm();render();
+    toast(editId?'UPDATED':'SAVED');
+  }finally{btn.textContent='SAVE';btn.disabled=false;}
+}
+
+async function del(id){
+  if(!confirm('Delete this entry?'))return;
+  entries=entries.filter(e=>e.id!==id);
+  await persist();render();toast('DELETED');
+}
+
+// ── RENDER
+function sf(f){
+  filt=f;
+  ['all','api','pw'].forEach(k=>{
+    const el=document.getElementById('f'+k);
+    const active=k===f;
+    el.style.borderColor=active?'var(--cyan)':'var(--border)';
+    el.style.color=active?'var(--cyan)':'var(--dim)';
+  });
+  render();
+}
+
+const rv={};
+function render(){
+  const q=(document.getElementById('sq')?.value||'').toLowerCase();
+  const filtered=entries.filter(e=>{
+    if(filt!=='all'&&e.type!==filt)return false;
+    return !q||(e.label||'').toLowerCase().includes(q)||(e.service||'').toLowerCase().includes(q)||(e.username||'').toLowerCase().includes(q);
+  });
+  document.getElementById('st').textContent=entries.length;
+  document.getElementById('sa').textContent=entries.filter(e=>e.type==='api').length;
+  document.getElementById('sp').textContent=entries.filter(e=>e.type==='pw').length;
+  document.getElementById('tb').style.display=entries.length?'flex':'none';
+  const list=document.getElementById('list');
+  if(!filtered.length){list.innerHTML=`<div class="empty">${entries.length?'NO RESULTS':'VAULT EMPTY — ADD YOUR FIRST ENTRY'}</div>`;return;}
+  list.innerHTML=filtered.map(e=>`
+    <div class="entry fi ${e.type==='api'?'ea':'ep'}">
+      <div class="etop">
+        <div class="einfo">
+          <div class="ehead">
+            <span class="tag ${e.type==='api'?'tag-a':'tag-p'}">${e.type==='api'?'API KEY':'PASSWORD'}</span>
+            <span class="elabel">${esc(e.label)}</span>
+          </div>
+          ${e.service?`<div class="esub">${esc(e.service)}</div>`:''}
+          ${e.username?`<div class="esub">${esc(e.username)}</div>`:''}
+          <div class="eval" id="v${e.id}">• • • • • • • • • • •</div>
+          ${e.notes?`<div class="enotes">${esc(e.notes)}</div>`:''}
+        </div>
+        <div class="eacts">
+          <button class="ab" id="rb${e.id}" onclick="toggleRev('${e.id}','${e.type}')">REVEAL</button>
+          <button class="ab acopy" onclick="copyVal('${e.id}')">COPY</button>
+          <button class="ab" onclick="openForm('${e.id}')">EDIT</button>
+          <button class="ab adel" onclick="del('${e.id}')">DEL</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleRev(id,type){
+  const el=document.getElementById('v'+id),btn=document.getElementById('rb'+id);
+  if(rv[id]){rv[id]=false;el.textContent='• • • • • • • • • • •';el.className='eval';btn.textContent='REVEAL';}
+  else{
+    try{
+      const e=entries.find(x=>x.id===id);
+      el.textContent=await dec(e.encryptedValue,PIN);
+      el.className='eval '+(type==='api'?'ra':'rp');
+      rv[id]=true;btn.textContent='HIDE';
+    }catch{el.textContent='DECRYPTION FAILED';}
+  }
+}
+
+async function copyVal(id){
+  try{
+    const e=entries.find(x=>x.id===id);
+    await navigator.clipboard.writeText(await dec(e.encryptedValue,PIN));
+    toast('✓ COPIED');
+  }catch{toast('COPY FAILED');}
+}
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+let tt;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast on';
+  clearTimeout(tt);tt=setTimeout(()=>t.className='toast',2000);
+}
+
+init();
+</script>
+</body>
+</html>
