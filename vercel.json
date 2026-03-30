@@ -2,7 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "echo 'No build needed'",
   "rewrites": [
-    { "source": "/api/vault", "destination": "/api/vault.js" },
-    { "source": "/", "destination": "/index.html" }
+    { "source": "/api/vault", "destination": "/api/vault.js" }
   ]
 }
