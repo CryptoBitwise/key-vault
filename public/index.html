@@ -423,7 +423,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<a id="vault-backup-dl" href="#" download style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none" aria-hidden="true"></a>
 
 <script>
 // ── STATE ────────────────────────────────────────────────────────────────────
@@ -600,24 +599,17 @@ function lockVault() {
 }
 
 // ── SAVE TO KV ───────────────────────────────────────────────────────────────
-function downloadVaultBackup(encryptedBlob) {
-  const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `vault-backup-${ts}.json`;
-  const json = JSON.stringify({ data: encryptedBlob });
-  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  const a = document.getElementById('vault-backup-dl');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-
 async function persist() {
   const json = JSON.stringify(entries);
-  const blob = await encryptData(json, PIN);
-  const data = await api('POST', { action: 'save', data: blob });
-  if (!data.ok) throw new Error(data.error || 'Save failed');
-  downloadVaultBackup(blob);
+  const data = await encryptData(json, PIN);
+  const saveRes = await api('POST', { action: 'save', data: data });
+  if (!saveRes.ok) throw new Error(saveRes.error || 'Save failed');
+  const blob = new Blob([JSON.stringify({ pinHash: storedPinHash, data: data })], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vault-backup-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ── FORM ─────────────────────────────────────────────────────────────────────
