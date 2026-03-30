@@ -1,10 +1,33 @@
 import { Redis } from "@upstash/redis";
 
-const kv = Redis.fromEnv();
+function createRedisClient() {
+  // Preferred envs for @upstash/redis REST client
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (upstashUrl && upstashToken) {
+    return Redis.fromEnv();
+  }
+
+  // Fallback to Vercel KV env vars (commonly auto-injected when KV is connected)
+  const kvUrl = process.env.KV_REST_API_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN;
+  if (kvUrl && kvToken) {
+    return new Redis({ url: kvUrl, token: kvToken });
+  }
+
+  // Last resort: keep same error shape but with a clearer message
+  throw new Error(
+    "Missing Upstash env vars. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_URL and KV_REST_API_TOKEN)."
+  );
+}
 
 export const config = { runtime: "edge" };
 
 export default async function handler(req) {
+  // Debug: confirm URL is available in production logs (token intentionally not logged)
+  console.log("UPSTASH_REDIS_REST_URL:", process.env.UPSTASH_REDIS_REST_URL);
+  const kv = createRedisClient();
+
   const headers = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
