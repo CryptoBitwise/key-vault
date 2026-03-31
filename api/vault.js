@@ -1,8 +1,23 @@
 import { Redis } from "@upstash/redis";
 
+function getRedisRestConfig() {
+  // Preferred on Vercel KV integrations
+  const kvUrl = process.env.KV_REST_API_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN;
+  if (kvUrl && kvToken) return { url: kvUrl, token: kvToken };
+
+  // Fallback for plain Upstash REST env vars
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (upstashUrl && upstashToken) return { url: upstashUrl, token: upstashToken };
+
+  throw new Error(
+    "Missing REST env vars: set KV_REST_API_URL and KV_REST_API_TOKEN (or UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN)."
+  );
+}
+
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  ...getRedisRestConfig(),
 });
 
 export default async function handler(req, res) {
