@@ -348,11 +348,18 @@ async function importBackup(input){
   const file=input.files[0];
   if(!file)return;
   try{
-    const text=await file.text();
-    const {pin,data}=JSON.parse(text);
-    if(!pin||!data){return toast('INVALID BACKUP FILE');}
-    // verify current PIN can decrypt it
-    const json=await dec(data,PIN);
+    const text=(await file.text()).trim();
+    let blob=null;
+    try{
+      const parsed=JSON.parse(text);
+      if(typeof parsed==='string') blob=parsed;
+      else blob=parsed.data||parsed.encrypted||parsed.blob||null;
+    }catch{
+      // not JSON — maybe the file IS the raw encrypted blob
+      blob=text;
+    }
+    if(!blob){return toast('INVALID BACKUP FILE');}
+    const json=await dec(blob,PIN);
     entries=JSON.parse(json);
     await persist();
     render();
